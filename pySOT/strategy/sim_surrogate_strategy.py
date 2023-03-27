@@ -15,7 +15,7 @@ from ..utils import check_opt_prob
 logger = logging.getLogger(__name__)
 
 
-class SurrogateBaseStrategy(BaseStrategy):
+class SimSurrogateBaseStrategy(BaseStrategy):
     __metaclass__ = abc.ABCMeta
     """Surrogate base strategy.
 
@@ -82,9 +82,9 @@ class SurrogateBaseStrategy(BaseStrategy):
     def __init__(
         self,
         max_evals,
-        opt_prob,
+        opt_prob,   # -> objective function
         exp_design,
-        surrogate,
+        surrogate,  # -> surrogate sim + obj: x -> f        # objective=objective ? 
         asynchronous=True,
         batch_size=None,
         extra_points=None,
@@ -95,9 +95,10 @@ class SurrogateBaseStrategy(BaseStrategy):
         self.batch_size = batch_size
 
         # Save the objects
-        self.opt_prob = opt_prob
-        self.exp_design = exp_design
-        self.surrogate = surrogate
+        self.opt_prob = opt_prob    # -> true objective: x -> f
+        self.exp_design = exp_design    # -> LHS samples
+        self.surrogate = surrogate  # -> surrogate objective: x -> f
+        #self.objective = objective  # -> surrogate objective: y -> f
 
         # Sampler state
         self.use_restarts = use_restarts  # Whether we are using restarts
@@ -121,12 +122,15 @@ class SurrogateBaseStrategy(BaseStrategy):
 
         # Completed evaluations # TODO add field to store simulator output
         self.X = np.empty([0, opt_prob.dim])
+        #self.Y = np.empty([0, opt_prob.dim_out])
         self.fX = np.empty([0, 1])              # gets record.value
         self.Xpend = np.empty([0, opt_prob.dim])
+        #self.Ypend = np.empty([0, opt_prob.dim_out])
         self.fevals = []    # same as fX but gets full record (not just record.value)
 
         # Completed evaluations in the current run
         self._X = np.empty([0, opt_prob.dim])
+        #self._Y = np.empty([0, opt_prob.dim_out])
         self._fX = np.empty([0, 1])
 
         # Event indices to keep track of if points where proposed before an event (restart, parameter change, etc.)
@@ -352,7 +356,7 @@ class SurrogateBaseStrategy(BaseStrategy):
         self.num_evals += 1
         self.pending_evals -= 1
 
-        xx, fx = np.copy(record.params[0]), record.value
+        xx, yy, fx = np.copy(record.params[0]), record.state, record.value    # TODO retrieve state and objective value
         self.X = np.vstack((self.X, np.atleast_2d(xx)))
         self.fX = np.vstack((self.fX, fx))
         self.remove_pending(xx)
@@ -361,7 +365,7 @@ class SurrogateBaseStrategy(BaseStrategy):
         if record.ev_id > self.ev_last:
             self._X = np.vstack((self._X, np.atleast_2d(xx)))
             self._fX = np.vstack((self._fX, fx))
-            self.surrogate.add_points(xx, fx)
+            self.surrogate.add_points(xx, yy, fx)   # TODO also give state to surrogate to train it
 
         self.log_completion(record)
         self.fevals.append(record)
@@ -417,7 +421,7 @@ class SurrogateBaseStrategy(BaseStrategy):
         self.num_evals += 1
         self.pending_evals -= 1
 
-        xx, fx = np.copy(record.params[0]), record.value
+        xx, yy, fx = np.copy(record.params[0]), record.state, record.value    # TODO retrieve state as well
         self.X = np.vstack((self.X, np.atleast_2d(xx)))
         self.fX = np.vstack((self.fX, fx))
         self.remove_pending(xx)
@@ -426,7 +430,7 @@ class SurrogateBaseStrategy(BaseStrategy):
         if record.ev_id > self.ev_last:
             self._X = np.vstack((self._X, np.atleast_2d(xx)))
             self._fX = np.vstack((self._fX, fx))
-            self.surrogate.add_points(xx, fx)
+            self.surrogate.add_points(xx, yy, fx)   # TODO pass both state and objective to surrogate to train it
 
         self.log_completion(record)
         self.fevals.append(record)

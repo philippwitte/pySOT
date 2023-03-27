@@ -6,13 +6,17 @@ from .random_strategy import RandomStrategy
 from .sop_strategy import SOPStrategy
 from .srbf_strategy import SRBFStrategy
 from .surrogate_strategy import SurrogateBaseStrategy
+from .sim_srbf_strategy import SimSRBFStrategy
+from .sim_surrogate_strategy import SimSurrogateBaseStrategy
 
 __all__ = [
     "SurrogateBaseStrategy",
+    "SimSurrogateBaseStrategy",
     "DYCORSStrategy",
     "EIStrategy",
     "LCBStrategy",
     "RandomStrategy",
     "SOPStrategy",
     "SRBFStrategy",
+    "SimSRBFStrategy"
 ]
